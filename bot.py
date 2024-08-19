@@ -46,7 +46,7 @@ async def start(update: Update, context: CallbackContext):
         # Send a message to join the group
         await update.message.reply_text(
             "You need to join the group to use this bot. Please join using the link below:\n"
-            "https://t.me/YourGroupInviteLink\n\n"
+            "https://t.me/Free_DDos_Networ\n\n"
             "After joining, you can start interacting with the bot in this chat."
         )
         return
