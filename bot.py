@@ -3,7 +3,7 @@ import subprocess
 import time
 import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackContext, filters
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext, filters
 from pymongo import MongoClient
 
 # Configuration
@@ -11,7 +11,7 @@ BOT_TOKEN = "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k"
 OWNER_IDS = [5606990991, 5460343986]
 MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 WEBAPP_URL = "https://iosmirror.cc/home?app=1"
-CHANNELS = ["@Falcon_Security", "@Found_us", "@Pbail_squad", "@Bot_Colony"]
+CHANNELS = ["@Falcon_Security", "@Pbail_squad", "@Found_Us", "@Bot_Colony"]
 
 # MongoDB Client Setup
 client = MongoClient(MONGO_URL)
@@ -29,10 +29,10 @@ def is_blacklisted(user_id):
 # Start Command
 async def start(update: Update, context: CallbackContext):
     buttons = [
-        [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security")],
-        [InlineKeyboardButton("Indian_Hacker", url="https://t.me/found_us")],
-        [InlineKeyboardButton("Pbail Squad", url="https://t.me/pbail_squad")],
-        [InlineKeyboardButton("Bot Colony", url="https://t.me/bot_colony")],
+        [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
+         InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
+        [InlineKeyboardButton("Indian Hacker", url="https://t.me/Found_Us"),
+         InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_colony")],
         [InlineKeyboardButton("Verify", callback_data="verify")]
     ]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -40,13 +40,15 @@ async def start(update: Update, context: CallbackContext):
         "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
     )
 
-# Verify Command
+# Verify Callback Query Handler
 async def verify(update: Update, context: CallbackContext):
-    user_id = update.message.from_user.id
-    if all(channel in context.bot.get_chat_member(channel, user_id) for channel in CHANNELS):
-        await update.message.reply_text("Verification successful! You can now use the bot.")
+    query = update.callback_query
+    user_id = query.from_user.id
+
+    if all(context.bot.get_chat_member(channel, user_id).status in ['member', 'administrator', 'creator'] for channel in CHANNELS):
+        await query.edit_message_text("Verification successful! You can now use the bot.")
     else:
-        await update.message.reply_text("Please join all required channels first.")
+        await query.edit_message_text("Please join all required channels first.")
 
 # Attack Command
 async def attack(update: Update, context: CallbackContext):
@@ -143,7 +145,7 @@ async def error_handler(update: Update, context: CallbackContext):
 app = Application.builder().token(BOT_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("verify", verify))
+app.add_handler(CallbackQueryHandler(verify, pattern="verify"))
 app.add_handler(CommandHandler("attack", attack))
 app.add_handler(CommandHandler("Blacklist", blacklist))
 app.add_handler(CommandHandler("rmBlacklist", rm_blacklist))
