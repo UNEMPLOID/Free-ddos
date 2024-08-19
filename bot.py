@@ -1,6 +1,7 @@
 import os
 import subprocess
 import time
+import asyncio
 import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
