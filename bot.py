@@ -40,12 +40,17 @@ def is_allowed_group(update):
 
 # Start Command
 async def start(update: Update, context: CallbackContext):
+    # Check if the message is from a private chat
     if update.message.chat.type == 'private':
+        # Send a message to join the group
         await update.message.reply_text(
-            "You need to join our group to use this bot. Please join: https://t.me/Your_Group_Link"
+            "You need to join the group to use this bot. Please join using the link below:\n"
+            "https://t.me/YourGroupInviteLink\n\n"
+            "After joining, you can start interacting with the bot in this chat."
         )
         return
 
+    # Continue with the existing logic for allowed groups
     if not is_allowed_group(update):
         return
 
