@@ -65,34 +65,39 @@ async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(
         "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
     )
-
 # Verify Callback Query Handler
 async def verify(update: Update, context: CallbackContext):
     if not is_allowed_group(update):
+        await update.callback_query.answer("You are not allowed to use this command in this group.")
         return
 
     query = update.callback_query
     user_id = query.from_user.id
 
-    # Verify all required channels
-    all_verified = True
-    for channel in CHANNELS:
-        try:
-            member = await context.bot.get_chat_member(channel, user_id)
-            if member.status not in ['member', 'administrator', 'creator']:
+    try:
+        # Verify all required channels
+        all_verified = True
+        for channel in CHANNELS:
+            try:
+                member = await context.bot.get_chat_member(channel, user_id)
+                if member.status not in ['member', 'administrator', 'creator']:
+                    all_verified = False
+                    break
+            except Exception as e:
                 all_verified = False
+                print(f"Error checking channel membership for {channel}: {e}")
                 break
-        except Exception:
-            all_verified = False
-            break
 
-    if all_verified:
-        await query.edit_message_text("Verification successful! You can now use the bot.\n\n"
-                                      "To attack a site, use the command:\n/attack {url} {time in seconds}\n\n"
-                                      "Note: Maximum attack duration is 200 seconds. Only 2 attacks can run simultaneously.")
-        await log_activity(f"User {user_id} has been verified successfully.")
-    else:
-        await query.edit_message_text("Please join all required channels first.")
+        if all_verified:
+            await query.edit_message_text("Verification successful! You can now use the bot.\n\n"
+                                          "To attack a site, use the command:\n/attack {url} {time in seconds}\n\n"
+                                          "Note: Maximum attack duration is 200 seconds. Only 2 attacks can run simultaneously.")
+            await log_activity(f"User {user_id} has been verified successfully.")
+        else:
+            await query.edit_message_text("Please join all required channels first.")
+    except Exception as e:
+        print(f"Error in verification: {e}")
+        await query.answer("An error occurred during verification. Please try again later.")
 
 # Attack Command
 async def attack(update: Update, context: CallbackContext):
