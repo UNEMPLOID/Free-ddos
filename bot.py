@@ -11,7 +11,7 @@ BOT_TOKEN = "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k"
 OWNER_IDS = [5606990991, 5460343986]
 MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 WEBAPP_URL = "https://iosmirror.cc/home?app=1"
-CHANNELS = ["@Falcon_Security", "@Eboy", "@Skg", "@Blackhat"]
+CHANNELS = ["@Falcon_Security", "@Found_us", "@Pbail_squad", "@Bot_Colony"]
 
 # MongoDB Client Setup
 client = MongoClient(MONGO_URL)
@@ -30,9 +30,9 @@ def is_blacklisted(user_id):
 async def start(update: Update, context: CallbackContext):
     buttons = [
         [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security")],
-        [InlineKeyboardButton("Join Eboy", url="https://t.me/Eboy")],
-        [InlineKeyboardButton("Join Skg", url="https://t.me/Skg")],
-        [InlineKeyboardButton("Join Blackhat", url="https://t.me/Blackhat")],
+        [InlineKeyboardButton("Indian_Hacker", url="https://t.me/found_us")],
+        [InlineKeyboardButton("Pbail Squad", url="https://t.me/pbail_squad")],
+        [InlineKeyboardButton("Bot Colony", url="https://t.me/bot_colony")],
         [InlineKeyboardButton("Verify", callback_data="verify")]
     ]
     keyboard = InlineKeyboardMarkup(buttons)
