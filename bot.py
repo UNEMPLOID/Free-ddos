@@ -40,18 +40,26 @@ def is_allowed_group(update):
 
 # Start Command
 async def start(update: Update, context: CallbackContext):
-    if update.message and is_allowed_group(update):
-        buttons = [
-            [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
-             InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
-            [InlineKeyboardButton("Indian Hacker", url="https://t.me/Found_Us"),
-             InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_colony")],
-            [InlineKeyboardButton("Verify", callback_data="verify")]
-        ]
-        keyboard = InlineKeyboardMarkup(buttons)
+    if update.message.chat.type == 'private':
         await update.message.reply_text(
-            "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
+            "You need to join our group to use this bot. Please join: https://t.me/Your_Group_Link"
         )
+        return
+
+    if not is_allowed_group(update):
+        return
+
+    buttons = [
+        [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
+         InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
+        [InlineKeyboardButton("Indian Hacker", url="https://t.me/Found_Us"),
+         InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_colony")],
+        [InlineKeyboardButton("Verify", callback_data="verify")]
+    ]
+    keyboard = InlineKeyboardMarkup(buttons)
+    await update.message.reply_text(
+        "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
+    )
     elif update.message:
         await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
 
