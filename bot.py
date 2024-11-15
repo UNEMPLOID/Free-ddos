@@ -9,7 +9,7 @@ from pymongo import MongoClient
 # Configuration
 BOT_TOKEN = "7050814519:AAHDae6zmEUNFfWxuTHUK0GqvkH3PSboTos"
 OWNER_IDS = [5606990991, 5460343986]
-MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URL = "mongodb+srv://vadab14458:8kcEfvKQbfJDryMM@cluster0.zcd3d.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 CHANNELS = ["@Cyber_lox", "@Team_Pbail", "@QuantumEthics", "@Bot_Colony"]
 ALLOWED_GROUP_ID = -1002239204465
 LOG_GROUP_ID = -1002155266073
