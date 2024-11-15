@@ -10,7 +10,7 @@ from pymongo import MongoClient
 BOT_TOKEN = "7050814519:AAHDae6zmEUNFfWxuTHUK0GqvkH3PSboTos"
 OWNER_IDS = [5606990991, 5460343986]
 MONGO_URL = "mongodb+srv://mpjmu808gh:8sqqX0ERW0IMtviu@cluster0.zo6rkop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-CHANNELS = ["@Falcon_Security", "@Team_Pbail", "@QuantumEthics", "@Bot_Colony"]
+CHANNELS = ["@Cyber_lox", "@Team_Pbail", "@QuantumEthics", "@Bot_Colony"]
 ALLOWED_GROUP_ID = -1002239204465
 LOG_GROUP_ID = -1002155266073
 
@@ -51,7 +51,7 @@ async def start(update: Update, context: CallbackContext):
         return
 
     buttons = [
-        [InlineKeyboardButton("Falcon Security", url="https://t.me/Falcon_Security"),
+        [InlineKeyboardButton("Cyber Lox", url="https://t.me/Cyber_lox"),
          InlineKeyboardButton("THINK BETTER", url="https://t.me/Team_Pbail")],
         [InlineKeyboardButton("QuantumEthics", url="https://t.me/QuantumEthics"),
          InlineKeyboardButton("Bot Colony", url="https://t.me/Bot_colony")],
